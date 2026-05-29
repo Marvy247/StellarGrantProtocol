@@ -18,5 +18,5 @@ export { StatBadge } from "./StatBadge";
 export { StatusDot } from "./StatusDot";
 export { PageTransition } from "./PageTransition";
 
-export { SearchInput } from "./SearchInput";
-export type { SearchInputProps } from "./SearchInput";
+export { AddressInput, addressToColor } from "./AddressInput";
+export type { AddressInputProps } from "./AddressInput";
