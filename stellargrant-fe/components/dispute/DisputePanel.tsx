@@ -68,7 +68,7 @@ export function DisputePanel({
         councilAddress,
       });
 
-      const hash = await execute({
+      await execute({
         method: txParams.method,
         args: txParams.args,
         onSuccess: (txHash) => {
@@ -84,7 +84,7 @@ export function DisputePanel({
           console.error("Resolution transaction failed:", err);
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error executing resolution:", err);
     }
   };
@@ -197,7 +197,7 @@ export function DisputePanel({
                 {confirmingAction === "approve" ? (
                   <>
                     You are resolving this dispute in favor of the <span className="text-success font-semibold">Contributor</span>.
-                    This will release the escrowed stake of <span className="text-text-primary font-bold">{formattedAmount}</span> to the contributor's payout address.
+                    This will release the escrowed stake of <span className="text-text-primary font-bold">{formattedAmount}</span> to the contributor&apos;s payout address.
                   </>
                 ) : (
                   <>

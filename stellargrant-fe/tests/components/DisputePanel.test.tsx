@@ -23,8 +23,8 @@ const mockResolveDispute = vi.fn();
 
 vi.mock("@/lib/stellar/contract", () => ({
   contractClient: {
-    isCouncilMember: (args: any) => mockIsCouncilMember(args),
-    resolveDispute: (args: any) => mockResolveDispute(args),
+    isCouncilMember: (args: unknown) => mockIsCouncilMember(args),
+    resolveDispute: (args: unknown) => mockResolveDispute(args),
   },
 }));
 
@@ -38,7 +38,7 @@ vi.mock("@/components/milestones/ProofViewer", () => ({
 
 const mockApiGet = vi.fn();
 vi.mock("@/lib/api", () => ({
-  apiGet: (url: string, params?: any) => mockApiGet(url, params),
+  apiGet: (url: string, params?: unknown) => mockApiGet(url, params),
 }));
 
 // Mock wallet address
