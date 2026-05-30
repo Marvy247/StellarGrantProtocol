@@ -1,5 +1,6 @@
 export { useRelativeTime } from "./useRelativeTime";
 export { useCopyToClipboard } from "./useCopyToClipboard";
+export { useAddressFormat } from "./useAddressFormat";
 export { useContractEvents } from "./useContractEvents";
 export { useContractTransaction } from "./useContractTransaction";
 export { useFundGrant } from "./useFundGrant";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { useAddressFormat } from "@/hooks/useAddressFormat";
 
 function CopyIcon() {
   return (
@@ -47,11 +48,6 @@ interface WalletAddressProps {
   showCopy?: boolean;
 }
 
-function truncateAddress(address: string): string {
-  if (address.length <= 10) return address;
-  return `${address.slice(0, 6)}…${address.slice(-4)}`;
-}
-
 export function WalletAddress({
   address,
   showCopyIcon = true,
@@ -59,6 +55,7 @@ export function WalletAddress({
   showCopy,
 }: WalletAddressProps) {
   const { copy, isCopied } = useCopyToClipboard();
+  const formatAddress = useAddressFormat();
   const iconVisible = showCopy !== undefined ? showCopy : showCopyIcon;
 
   return (
@@ -71,7 +68,7 @@ export function WalletAddress({
       )}
 
       <span className="font-mono text-sm" title={address}>
-        {truncateAddress(address)}
+        {formatAddress(address)}
       </span>
 
       {iconVisible && (

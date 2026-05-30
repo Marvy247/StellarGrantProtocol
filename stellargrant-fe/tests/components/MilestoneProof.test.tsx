@@ -8,6 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { contentCache } from "@/hooks/useIPFSContent";
 
 // ── Shared mock constants ──────────────────────────────────────────────────────
 const WALLET_ADDRESS = "GDUMMYWALLETADDRESS1234567890ABCDE12345678";
@@ -305,6 +306,7 @@ describe("ProofViewer — IPFS CID", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    contentCache.clear();
     // Re-apply clipboard mock after restoreAllMocks
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
