@@ -22,7 +22,8 @@ function testSanitizer(html: string): string {
   if (!html) return "";
   return html
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
-    .replace(/\s(onerror|onclick|onload|javascript)=[^\s>]*/gi, "");
+    .replace(/\s(onerror|onclick|onload|javascript)=[^\s>]*/gi, "")
+    .replace(/href="javascript:[^"]*"/gi, 'href="#"');
 }
 
 // ── sanitizeHtml ─────────────────────────────────────────────────────────────

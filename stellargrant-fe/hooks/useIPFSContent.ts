@@ -13,7 +13,7 @@ export interface UseIPFSContentResult {
 }
 
 // Module-level cache so the same CID is never fetched twice across hook instances.
-const contentCache = new Map<
+export const contentCache = new Map<
   string,
   { content: string; contentType: string; gatewayUsed: string }
 >();
@@ -73,8 +73,8 @@ export function useIPFSContent(cid: string | null): UseIPFSContentResult {
 
         // Determine which gateway served the response
         const served =
-          IPFS_GATEWAYS.find((g) => response.url?.startsWith(g)) ??
-          new URL(response.url).hostname;
+          (response.url && IPFS_GATEWAYS.find((g) => response.url.startsWith(g))) ||
+          (response.url ? new URL(response.url).hostname : "unknown");
 
         if (cancelledRef.current) return;
 
