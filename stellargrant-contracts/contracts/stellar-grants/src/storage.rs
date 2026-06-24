@@ -1,7 +1,8 @@
 use crate::types::{
-    AuditEntry, ContractError, ContractVersion, ContributorProfile, EscrowState, Grant,
+    AuditEntry, ContractError, ContractVersion, ContributorProfile, Dispute, EscrowState, Grant,
     HookEvent, HookRegistration, InsuranceClaim, InsurancePolicy, MigrationRecord, Milestone,
-    PauseRecord, PaymentStream, QuadraticVoteRecord, RegistryEntry, VoiceCredits, VotingMechanism,
+    PauseRecord, PaymentStream, ProtocolConfig, QuadraticVoteRecord, RegistryEntry, VoiceCredits,
+    VotingMechanism,
 };
 use soroban_sdk::{contracttype, Address, Env, Vec};
 
@@ -47,11 +48,30 @@ pub enum DataKey {
     InsuranceClaimCounter,
     // External hooks (#539)
     HookRegistry(u32),
+    // Issue #151: milestone reputation tracking
+    MilestoneReputationApplied(u64, u32),
+    // Issue #514: arbiter-based dispute record
+    DisputeRecord(u64, u32),
+    // Issue #516: runtime protocol configuration
+    ProtocolConfig,
+    // Issue #517: cumulative fees per token
+    FeesCollected(Address),
 }
+
+const PERSISTENT_TTL_THRESHOLD: u32 = 100_000;
+const PERSISTENT_TTL_EXTEND_TO: u32 = 1_000_000;
 
 pub struct Storage;
 
 impl Storage {
+    fn bump_persistent_ttl(env: &Env, key: &DataKey) {
+        env.storage().persistent().extend_ttl(
+            key,
+            PERSISTENT_TTL_THRESHOLD,
+            PERSISTENT_TTL_EXTEND_TO,
+        );
+    }
+
     pub fn increment_grant_counter(env: &Env) -> u64 {
         let mut count: u64 = env
             .storage()
@@ -177,7 +197,7 @@ impl Storage {
         env.storage()
             .persistent()
             .get(&DataKey::ReviewerReputation(reviewer))
-            .unwrap_or(1) // Default reputation is 1
+            .unwrap_or(1)
     }
 
     pub fn set_reviewer_reputation(env: &Env, reviewer: Address, reputation: u32) {
@@ -208,6 +228,10 @@ impl Storage {
 
     pub fn get_treasury(env: &Env) -> Option<Address> {
         env.storage().persistent().get(&DataKey::Treasury)
+    }
+
+    pub fn set_treasury(env: &Env, treasury: &Address) {
+        env.storage().persistent().set(&DataKey::Treasury, treasury);
     }
 
     pub fn get_identity_oracle(env: &Env) -> Option<Address> {
@@ -475,5 +499,122 @@ impl Storage {
         env.storage()
             .persistent()
             .set(&DataKey::HookRegistry(event.clone() as u32), hooks);
+    }
+
+    // ── Issue #151: milestone reputation tracking ─────────────────────────────
+
+    pub fn has_milestone_reputation_applied(env: &Env, grant_id: u64, milestone_idx: u32) -> bool {
+        env.storage()
+            .persistent()
+            .has(&DataKey::MilestoneReputationApplied(
+                grant_id,
+                milestone_idx,
+            ))
+    }
+
+    pub fn mark_milestone_reputation_applied(env: &Env, grant_id: u64, milestone_idx: u32) {
+        let key = DataKey::MilestoneReputationApplied(grant_id, milestone_idx);
+        env.storage().persistent().set(&key, &true);
+        Self::bump_persistent_ttl(env, &key);
+    }
+
+    // ── Issue #514: arbiter-based dispute record ──────────────────────────────
+
+    pub fn get_dispute(env: &Env, grant_id: u64, milestone_idx: u32) -> Option<Dispute> {
+        let key = DataKey::DisputeRecord(grant_id, milestone_idx);
+        let d = env.storage().persistent().get(&key);
+        if d.is_some() {
+            Self::bump_persistent_ttl(env, &key);
+        }
+        d
+    }
+
+    pub fn set_dispute(env: &Env, grant_id: u64, milestone_idx: u32, dispute: &Dispute) {
+        let key = DataKey::DisputeRecord(grant_id, milestone_idx);
+        env.storage().persistent().set(&key, dispute);
+        Self::bump_persistent_ttl(env, &key);
+    }
+
+    pub fn remove_dispute(env: &Env, grant_id: u64, milestone_idx: u32) {
+        env.storage()
+            .persistent()
+            .remove(&DataKey::DisputeRecord(grant_id, milestone_idx));
+    }
+
+    // ── Issue #516: ProtocolConfig ────────────────────────────────────────────
+
+    pub fn get_protocol_config(env: &Env) -> Option<ProtocolConfig> {
+        let key = DataKey::ProtocolConfig;
+        let cfg = env.storage().persistent().get(&key);
+        if cfg.is_some() {
+            Self::bump_persistent_ttl(env, &key);
+        }
+        cfg
+    }
+
+    pub fn set_protocol_config(env: &Env, cfg: &ProtocolConfig) {
+        let key = DataKey::ProtocolConfig;
+        env.storage().persistent().set(&key, cfg);
+        Self::bump_persistent_ttl(env, &key);
+    }
+
+    // ── Issue #517: cumulative fees per token ─────────────────────────────────
+
+    pub fn get_fees_collected(env: &Env, token: &Address) -> i128 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::FeesCollected(token.clone()))
+            .unwrap_or(0)
+    }
+
+    pub fn add_fees_collected(env: &Env, token: &Address, amount: i128) {
+        let key = DataKey::FeesCollected(token.clone());
+        let current: i128 = env.storage().persistent().get(&key).unwrap_or(0);
+        env.storage()
+            .persistent()
+            .set(&key, &current.saturating_add(amount));
+        Self::bump_persistent_ttl(env, &key);
+    }
+
+    // ── Emergency pause storage ───────────────────────────────────────────────
+
+    pub fn get_is_paused(env: &Env) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey::IsPaused)
+            .unwrap_or(false)
+    }
+
+    pub fn set_is_paused(env: &Env, val: bool) {
+        env.storage().persistent().set(&DataKey::IsPaused, &val);
+    }
+
+    pub fn get_pause_history(env: &Env) -> soroban_sdk::Vec<PauseRecord> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::PauseHistory)
+            .unwrap_or_else(|| soroban_sdk::Vec::new(env))
+    }
+
+    pub fn append_pause_record(env: &Env, record: &PauseRecord) {
+        let mut history = Self::get_pause_history(env);
+        history.push_back(record.clone());
+        env.storage()
+            .persistent()
+            .set(&DataKey::PauseHistory, &history);
+    }
+
+    pub fn set_latest_pause_unpaused_at(env: &Env, timestamp: u64) {
+        let mut history = Self::get_pause_history(env);
+        let len = history.len();
+        if len == 0 {
+            return;
+        }
+        let mut last = history.get(len - 1).unwrap();
+        last.unpaused_at = Some(timestamp);
+        history.set(len - 1, last);
+        env.storage()
+            .persistent()
+            .set(&DataKey::PauseHistory, &history);
     }
 }
