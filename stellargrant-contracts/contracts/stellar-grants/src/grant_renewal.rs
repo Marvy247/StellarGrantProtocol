@@ -16,7 +16,7 @@ pub fn propose_renewal(
 ) -> Result<(), ContractError> {
     proposer.require_auth();
 
-    let grant = Storage::get_grant_v(&env, original_grant_id);
+    let grant = Storage::get_grant_v(env, original_grant_id);
 
     if grant.status != GrantStatus::Completed
         && grant.milestones_paid_out < grant.total_milestones - 1
@@ -40,7 +40,7 @@ pub fn propose_renewal(
         new_grant_id: None,
     };
 
-    Storage::set_renewal_proposal(&env, &proposal);
+    Storage::set_renewal_proposal(env, &proposal);
     Ok(())
 }
 
@@ -51,8 +51,8 @@ pub fn approve_renewal(
 ) -> Result<RenewalStatus, ContractError> {
     reviewer.require_auth();
 
-    let mut proposal = Storage::get_renewal_proposal(&env, original_grant_id)
-        .ok_or(ContractError::InvalidState)?;
+    let mut proposal =
+        Storage::get_renewal_proposal(env, original_grant_id).ok_or(ContractError::InvalidState)?;
 
     if proposal.status != RenewalStatus::Proposed {
         return Err(ContractError::InvalidState);
@@ -64,7 +64,7 @@ pub fn approve_renewal(
 
     proposal.reviewer_votes += 1;
     proposal.status = RenewalStatus::ReviewerApproved;
-    Storage::set_renewal_proposal(&env, &proposal);
+    Storage::set_renewal_proposal(env, &proposal);
     Ok(proposal.status)
 }
 
@@ -75,24 +75,24 @@ pub fn activate_renewal(
 ) -> Result<u64, ContractError> {
     owner.require_auth();
 
-    let mut proposal = Storage::get_renewal_proposal(&env, original_grant_id)
-        .ok_or(ContractError::InvalidState)?;
+    let mut proposal =
+        Storage::get_renewal_proposal(env, original_grant_id).ok_or(ContractError::InvalidState)?;
 
     if proposal.status != RenewalStatus::ReviewerApproved {
         return Err(ContractError::InvalidState);
     }
 
-    let original_grant = Storage::get_grant_v(&env, original_grant_id);
+    let original_grant = Storage::get_grant_v(env, original_grant_id);
     if original_grant.owner != *owner {
         return Err(ContractError::Unauthorized);
     }
 
-    let new_grant_id = Storage::increment_grant_counter(&env);
+    let new_grant_id = Storage::increment_grant_counter(env);
 
     proposal.status = RenewalStatus::Active;
     proposal.new_grant_id = Some(new_grant_id);
-    Storage::set_renewal_proposal(&env, &proposal);
-    Storage::set_renewal_history(&env, new_grant_id, original_grant_id);
+    Storage::set_renewal_proposal(env, &proposal);
+    Storage::set_renewal_history(env, new_grant_id, original_grant_id);
 
     Ok(new_grant_id)
 }
@@ -104,25 +104,25 @@ pub fn decline_renewal(
 ) -> Result<(), ContractError> {
     caller.require_auth();
 
-    let mut proposal = Storage::get_renewal_proposal(&env, original_grant_id)
-        .ok_or(ContractError::InvalidState)?;
+    let mut proposal =
+        Storage::get_renewal_proposal(env, original_grant_id).ok_or(ContractError::InvalidState)?;
 
     if proposal.status == RenewalStatus::Declined || proposal.status == RenewalStatus::Expired {
         return Err(ContractError::InvalidState);
     }
 
-    let grant = Storage::get_grant_v(&env, original_grant_id);
+    let grant = Storage::get_grant_v(env, original_grant_id);
     if grant.owner != *caller {
         return Err(ContractError::Unauthorized);
     }
 
     proposal.status = RenewalStatus::Declined;
-    Storage::set_renewal_proposal(&env, &proposal);
+    Storage::set_renewal_proposal(env, &proposal);
     Ok(())
 }
 
 pub fn get_proposal(env: &Env, original_grant_id: u64) -> Option<RenewalProposal> {
-    Storage::get_renewal_proposal(&env, original_grant_id)
+    Storage::get_renewal_proposal(env, original_grant_id)
 }
 
 pub fn renewal_chain(env: &Env, original_grant_id: u64) -> soroban_sdk::Vec<u64> {
@@ -130,14 +130,10 @@ pub fn renewal_chain(env: &Env, original_grant_id: u64) -> soroban_sdk::Vec<u64>
     chain.push_back(original_grant_id);
 
     let mut current_id = original_grant_id;
-    loop {
-        if let Some(proposal) = Storage::get_renewal_proposal(&env, current_id) {
-            if let Some(new_id) = proposal.new_grant_id {
-                chain.push_back(new_id);
-                current_id = new_id;
-            } else {
-                break;
-            }
+    while let Some(proposal) = Storage::get_renewal_proposal(env, current_id) {
+        if let Some(new_id) = proposal.new_grant_id {
+            chain.push_back(new_id);
+            current_id = new_id;
         } else {
             break;
         }

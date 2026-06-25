@@ -218,8 +218,8 @@ fn insertion_sort(results: &mut Vec<ScoreResult>) {
             let prev = results.get(j - 1).unwrap();
             let tmp_clone = tmp.clone();
             let prev_clone = prev.clone();
-            results.set(j as u32, prev_clone);
-            results.set((j - 1) as u32, tmp_clone);
+            results.set(j, prev_clone);
+            results.set(j - 1, tmp_clone);
             j -= 1;
         }
     }

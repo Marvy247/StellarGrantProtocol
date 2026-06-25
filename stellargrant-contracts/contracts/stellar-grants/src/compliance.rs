@@ -34,7 +34,7 @@ pub fn attest(
     }
 
     let now = env.ledger().timestamp();
-    let level_u32 = level.clone() as u32;
+    let level_u32 = level as u32;
 
     let attestation = ComplianceAttestation {
         subject: subject.clone(),
@@ -121,7 +121,7 @@ pub fn require_compliant_u32(
         return Err(ContractError::ComplianceNotVerified);
     }
 
-    let attestation_level = attestation.level.clone() as u32;
+    let attestation_level = attestation.level as u32;
     if attestation_level < required_level {
         return Err(ContractError::ComplianceCheckFailed);
     }

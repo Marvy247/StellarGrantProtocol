@@ -89,7 +89,7 @@ pub fn swap(
     let expected_out = quote(env, &route, amount_in)?;
 
     let from_token_client = token::Client::new(env, &route.from_token);
-    from_token_client.transfer(caller, &env.current_contract_address(), &amount_in);
+    from_token_client.transfer(caller, env.current_contract_address(), &amount_in);
 
     let actual_out = expected_out;
     let slippage_bps = if expected_out > 0 {

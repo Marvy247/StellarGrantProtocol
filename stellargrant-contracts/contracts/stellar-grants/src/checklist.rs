@@ -126,7 +126,7 @@ pub fn review_criterion(
     } else {
         CriterionStatus::RejectedByReviewer
     };
-    submission.statuses.set(criterion_idx as u32, new_status);
+    submission.statuses.set(criterion_idx, new_status);
 
     let mut all_required_met = true;
     for i in 0..submission.criteria.len() {

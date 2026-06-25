@@ -29,7 +29,7 @@ pub fn create_bounty(
     let now = env.ledger().timestamp();
     let submission_deadline = now.saturating_add(submission_window_ledgers as u64);
 
-    token::Client::new(env, token).transfer(owner, &env.current_contract_address(), &prize_amount);
+    token::Client::new(env, token).transfer(owner, env.current_contract_address(), &prize_amount);
 
     let bounty = BountyGrant {
         id,

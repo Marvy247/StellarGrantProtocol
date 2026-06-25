@@ -1,5 +1,5 @@
 #![no_std]
-#![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_arguments, dead_code)]
 mod audit;
 mod bounty;
 mod checklist;
